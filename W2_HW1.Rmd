@@ -1,22 +1,50 @@
+---
+title: "Assignment#1 R Basic"
+author: "何承諭"
+date: "2019.9.20"
+output:
+  html_document:
+    highlight: zenburn
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+    css: style.css
+editor_options:
+  chunk_output_type: inline
+---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+環境建置
+```{r warning=FALSE, message=FALSE}
 library(dplyr)
+```
 
+# Practice_01_2_1: Filtering data
+```{r}
 # Q1
 
 x.a <- rnorm(1000, 1, 10)
 
 # 1.1 Filter OUT extreme values out of two standard deviations
-x.a <- x.a [x.a < (1 + 2 * 10) & x.a > (1 - 2 * 10)]
+x.a_filter <- x.a [x.a < (1 + 2 * 10) & x.a > (1 - 2 * 10)]
 
 # 1.2 Plotting the distribution of the remaining vector x.a
-plot(density(x.a), main = "PDF of rnorm(1000, 1, 10) within 2 sd")
+plot(density(x.a_filter), main = "PDF of rnorm(1000, 1, 10) within 2 sd")
 
 # 1.3 Calculate the 25% 50% and 75% quantile of vector x.a. (You may google "quantile r)
 quantile(x.a)
 
 # 1.4 Get the sequence between 25% to 75% of x.a
 x.a [x.a < quantile(x.a, 0.75) & x.a > quantile(x.a, 0.25)]
+```
 
+
+
+# Practice01_2_2: Accessing characters
+```{r}
 # Q2
 
 x.b <- c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")
@@ -26,8 +54,11 @@ x.b [seq(from = 1, to = length(x.b), by = 2)]
 
 # 2.2 Truncate the first 2 elements and the last 2 elements
 x.b [3:(length(x.b) - 2)]
+```
 
 
+# Practice01_2_3: Sorting
+```{r}
 # Q3
 
 population <- c(158228, 126687, 228075, 204903, 308383)
@@ -50,6 +81,11 @@ data.frame(town, population, stringsAsFactors = F) %>%
   unlist() %>%
   unname()
 
+```
+
+
+# PracticeR01_2_4: Using google to solve following questions
+```{r}
 # Q4
 
 # 4.1 Print current time
@@ -57,27 +93,40 @@ data.frame(town, population, stringsAsFactors = F) %>%
 Sys.time()
 
 # 4.2 Check the data type of current time
-typeof(Sys.time())
+class(Sys.time())
 
 # 4.3 Print today
 # e.g., [1] "2019-09-02"
 Sys.Date()
 
 # 4.4 Check the data type of date
-typeof(Sys.Date())
+class(Sys.Date())
 
 # 4.5 Write example to compare following functions: print(), cat(), and message() 
-
-# print() prints out object in assistance with object counter like [1], and it also adds some type feature like "" for character.
-# cat() concatenates different objects and gives a spacing between them, it concisely print out those objects themselves without other words or assistance like "" \n [1]
-# cat() also drops attributes of its inputs. Thus it could be tricky when dealing with types like "factor" and "Date"
-# message() gives a highlight for object to print, it's simply print out the object concisely in red color. 
 
 print(Sys.Date())
 cat(Sys.Date())
 message(Sys.Date())
 cat("Hello", "World")
 
+```
+
+    Difference Between Functions:
+    
+    1. print() prints out object in assistance with counter like [1],
+    and it also adds some type feature like "" for character.
+    
+    2. cat() concatenates different objects and gives a spacing between them,
+    it concisely print out those objects themselves without other words or assistance like "" \n [1].
+    
+    3. cat() also drops attributes of its inputs, 
+    thus it could be tricky when dealing with types like "factor" and "Date".
+    
+    4. message() gives a highlight for object to print,
+    it's simply print out the object concisely in specific color.
+
+# PracticeR01_2_5: Using google: measure running time
+```{r}
 # Q5
 
 # 5.1 Using google to find out how to measure the ruuning time of the following code
@@ -89,6 +138,15 @@ end_time <- Sys.time()
 
 end_time - start_time
 
+
+```
+
+
+# Practice_01_3_1
+
+* 底下有個data.frame有兩個variable，`order(df2$a, df2$b)`是先照`a`還是`b`排序呢？那如果加上負號又是什麼意思呢？
+
+```{r}
 # Q6
 
 a <- c(5, 5, 5, 5, 4, 4, 4, 3, 3, 1, 1, 1, 2, 2, 2)
@@ -98,9 +156,17 @@ df2 <- data.frame(a, b)
 # sort df2 in orders of decreasing b then increasing a
 df2 <- df2[order(df2$a, -df2$b),]
 
-# order(df2$a, df2$b) sort dataframe in orders of "a" first, then "b"
-# the negative sign represent in orders of decreasing
+```
 
+    Answer:
+    
+    1. order(df2$a, df2$b) sort dataframe in orders of "a" first, then "b".
+    2. The negative sign represent in orders of decreasing.
+
+# Practice_01_3_2
+
+* 先將以下三個vectors合併為一個data.frame，並先就出口再入口的比例，由大而小排列後，覆蓋掉原本的data.frame。
+```{r}
 # Q7
 
 country <- c("CN", "US", "JP", "HK", "KR", "SG", "DE", "MY", "VN", "PH", "TH", "AU", "NL", "SA", "ID", "GB", "IN", "FR", "IT", "AE")
@@ -115,9 +181,7 @@ df
 df <- df %>%
   arrange(desc(export), desc(import))
 df
-
-
-
+```
 
 
 
