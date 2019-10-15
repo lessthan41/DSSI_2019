@@ -1,0 +1,390 @@
+---
+title: "AS03_join_edu_data"
+author: "B06208030 Wayne Ho"
+date: "10/15/2019"
+output:
+  html_document:
+    highlight: zenburn
+    number_sections: no
+    theme: cerulean
+    toc: yes
+    css: style.css
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+
+```{r}
+library(tidyverse)
+options(stringsAsFactors = F)
+```
+
+# Q1 Joining educational data
+- Reading educational data from the following csv file.
+
+## Reading education data
+```{r}
+read_csv("data/opendata107Y020.csv") %>%
+    slice(-1) %>% 
+    glimpse()
+```
+
+
+## Town level educational data 
+- Original data is village-level data
+- Following In-Class tutorial, using `group_by()` to create town-level statistical data.
+
+```{r, message=FALSE, warning=FALSE}
+# exception handler
+education_contains_two <- read_csv("data/opendata107Y020.csv") %>%
+  slice(-1) %>%
+  filter(str_detect(site_id, "一$|二$")) %>%
+  mutate(site_id = str_replace_all(site_id, "一|二", "區"))
+
+# load education
+education <- read_csv("data/opendata107Y020.csv") %>%
+  slice(-1) %>%
+  filter(!str_detect(site_id, "一$|二$")) %>%
+  rbind(education_contains_two) %>%
+  gather(key = "key", value = "value", -c(statistic_yyy, district_code, site_id, village)) %>%
+  select(site_id, key, value) %>%
+  separate(col = "key", into = c("edu", "level", "state", "gender"), sep = "_") %>%
+  select(-edu)
+
+# exception for illiterate
+education_illiterate <- education %>%
+  filter(level == "illiterate" | level == "selftaughtl") %>%
+  mutate(gender = state,
+         state = NA)
+
+education.tidy <- education %>%
+  filter(level != "illiterate" && level != "selftaughtl") %>%
+  rbind(education_illiterate) %>%
+  filter(!str_detect(level, "age")) %>%
+  mutate(value = as.numeric(value)) %>%
+  group_by(site_id, level) %>%
+  summarise(value = sum(value)) %>%
+  ungroup() %>%
+  spread(level, value) %>%
+  mutate(all.people = rowSums(.[2:12]), 
+         univ.people = rowSums(.[c(2,5,7,12)]),
+         univPerc = univ.people / all.people)
+
+education.tidy %>% head
+```
+
+## Loading town-level age, marriage, and referendum data
+- Loading town-level data created in class
+
+```{r,message=FALSE}
+# exception handler
+marriage_contains_two <- read_csv("data/population.csv") %>%
+  filter(str_detect(site_id, "一$|二$")) %>%
+  mutate(site_id = str_replace_all(site_id, "一|二", "區")) %>%
+  group_by(site_id) %>%
+  summarise(people = sum(people),
+            elderSum = sum(elderSum),
+            marriedSum = sum(marriedSum),
+            elderPerc = elderSum / people,
+            marriedPerc = marriedSum / people) %>%
+  ungroup()
+
+# load marriage
+marriage <- read_csv("data/population.csv") %>%
+  mutate(
+    site_id = str_remove_all(site_id, "　")
+  ) %>%
+  filter(!str_detect(site_id, "一$|二$")) %>%
+  rbind(marriage_contains_two)
+
+# load ref10
+ref10.raw <- read_csv("data/referendum_byTown/ref10.csv", locale = locale(encoding = 'UTF-8')) %>%
+  slice(-1) 
+names(ref10.raw) <- c("refno", "county", "town", "n_agree", "n_disagree", "n_valid", "n_invalid", "n_ticket", "n_people", "perc_ticket", "perc_agree", "perc_disagree", "agree_disagree")
+
+ref10 <- ref10.raw %>%
+  filter(!is.na(town)) %>%
+  select(refno, county, town, n_agree, n_disagree, n_valid, n_invalid, n_ticket, n_people) %>%
+  mutate(site_id = paste0(county, town)) %>%
+  select(refno, site_id, everything()) %>%
+  select(-c(county, town)) %>%
+  group_by(refno, site_id) %>%
+  summarise_all(.funs = sum) %>%
+  ungroup() %>%
+  mutate(perc_ticket = n_ticket / n_people,
+         perc_agree = n_agree / n_ticket,
+         perc_disagree = 1 - perc_agree)
+
+marriage %>% head
+ref10 %>% head
+
+```
+
+
+
+## Joining data together
+- Joining all town-leave data together (Including new educational dada, and age, marriage, referendum data introduced in class)
+```{r}
+
+df <- ref10 %>%
+  left_join(marriage, by = "site_id") %>%
+  left_join(education.tidy, by = "site_id")
+
+```
+
+## **Q1 Ans: Joined data dimension**
+- using `dim()` to display data dimension (should be 368). TAs will score Q1 according to the outcome.
+```{r}
+
+dim(df)
+
+```
+
+
+## **Q1 Ans: glimpse()**
+- Using `glimpse()` to print out data you join below. TAs will score Q1 according to the `glimpse()` outcome.
+```{r}
+
+glimpse(df)
+
+```
+
+# Q2 Open Question - Joining one more dimension
+- TASK: Collecting one more dimension from open data for town level and join it with the eucation, married, age, and referendum data.
+
+
+## Read the file
+```{r}
+
+child <- read_csv("data/opendata107b040.csv")
+population <- read_csv("data/population.csv") # in class
+
+```
+
+## Display the data dimension of the file
+```{r}
+
+dim(child)
+dim(population)
+
+```
+
+## Add code chunks as you need
+
+```{r}
+# exception handler
+child_contains_two <- child %>%
+  slice(-1) %>%
+  filter(str_detect(site_id, "一$|二$")) %>%
+  mutate(site_id = str_replace_all(site_id, "一|二", "區"))
+
+population_contains_two <- population %>%
+  slice(-1) %>%
+  filter(str_detect(site_id, "一$|二$")) %>%
+  mutate(site_id = str_replace_all(site_id, "一|二", "區")) %>%
+  select(site_id, people) %>%
+  group_by(site_id) %>%
+  summarise(people = sum(people))
+  
+
+# child data
+tidy_child <- child %>%
+  slice(-1) %>%
+  filter(!str_detect(site_id, "一$|二$")) %>%
+  rbind(child_contains_two) %>%
+  select(site_id, birth_count) %>%
+  mutate(birth_count = as.numeric(birth_count)) %>%
+  group_by(site_id) %>%
+  summarise(birth_count = sum(birth_count)) %>%
+  ungroup()
+
+# population data
+tidy_population <- population %>%
+  select(site_id, people) %>%
+  filter(!str_detect(site_id, "一$|二$")) %>%
+  rbind(population_contains_two)
+
+# merge
+df <- df %>%
+  mutate(birth_rate = tidy_child$birth_count / tidy_population$people * 1000)
+```
+
+
+## **Q2 Ans: Answer following questions**
+- Data source link (the page you download the data): 
+- Describe the data source in your words: 
+    
+107年全臺各區嬰兒出生數: https://data.gov.tw/dataset/100324
+    
+    透過新生兒出生數與課堂計算之各區域總人口計算出生率CBR(每年、每一千人當中的新生人口數)做為一變數面向
+    
+## **Q2 Ans: Dim() of joined data frame**
+
+```{r}
+dim(df)
+```
+
+
+## **Q2 Ans: glimpse() of joined data frame**
+```{r}
+glimpse(df)
+```
+
+# Q3 Open question - Linear regression
+ - Now, you have age, marriage, and education as indenpendent variables and referendum 10th agreement as the dependent variable.
+ - Go online and search how to run regression with R
+ - Report the regression result 
+
+## **Q3 Ans**
+```{r}
+
+# Perc_agree & MarriedPerc
+agree.marry <- lm(formula = perc_agree ~ marriedPerc, data = df)
+summary(agree.marry)
+cor.test(df$perc_agree, df$marriedPerc)
+
+```
+
+    公投第10案同意率與結婚比例回歸結果顯示：
+    斜率為0.48590，截距為0.37413，
+    通過顯著水準為0.001之假設檢定拒絕Ho，兩者關係為正相關
+    由R-squared可以得知此回歸可以解釋約 11% 的變異
+    相關係數為0.332713
+    
+```{r}
+
+# Perc_agree & Education
+agree.edu <- lm(formula = perc_agree ~ univPerc, data = df)
+summary(agree.marry)
+cor.test(df$perc_agree, df$univPerc)
+
+```
+
+    公投第10案同意率與大學畢業比例回歸結果顯示：
+    斜率為-0.203672，截距為0.794034，
+    通過顯著水準為0.001之假設檢定拒絕Ho，兩者關係為負相關
+    由R-squared可以得知此回歸可以解釋約 39% 的變異
+    相關係數為-0.6244475 
+    
+```{r}
+
+# Perc_agree & BirthRate
+agree.birth <- lm(formula = perc_agree ~ birth_rate, data = df)
+summary(agree.birth)
+cor.test(df$perc_agree, df$birth_rate)
+
+```
+
+    公投第10案同意率與107年出生率回歸結果顯示：
+    斜率為-1.195 * 10^(-4)，截距為0.794034，
+    通過顯著水準為0.001之假設檢定拒絕Ho，兩者關係為負相關
+    由R-squared可以得知此回歸可以解釋約 5% 的變異
+    相關係數為-0.2285568
+
+# Q4 Challenge: The median of grouped data
+- Calculating age median of grouped data
+- Reference: https://www.themathdoctors.org/finding-the-median-of-grouped-data/
+- Solve it wit dplyr pkgs
+- If you can't answer the question correctly, keep your code (even wrong) to get partial scores.
+
+```{r}
+
+age <- read_csv("data/marriage.csv") %>%
+  select(site_id, ageLower, ageUpper, value) %>%
+  mutate(ageRange = str_c(ageLower, "~", ageUpper)) %>%
+  select(site_id, ageRange, value)
+
+# exception handler
+age_contains_two <- age %>%
+  filter(str_detect(site_id, "一$|二$")) %>%
+  mutate(site_id = str_replace_all(site_id, "一|二", "區"))
+
+age.368 <- age %>%
+  filter(!str_detect(site_id, "一$|二$")) %>%
+  rbind(age_contains_two) %>%
+  group_by(site_id, ageRange) %>%
+  summarise(value = sum(value)) %>%
+  ungroup()
+
+tidy.age <- data.frame()
+tag <- age.368$site_id %>% unique()
+
+# rearrange
+for (i in tag) {
+  
+  age.temp <- age.368 %>%
+    filter(site_id == i)
+  
+  age.temp <- rbind(age.temp[-2, ], age.temp[2, ])
+  tidy.age <- rbind(tidy.age, age.temp)
+  
+}
+
+head(tidy.age)
+
+
+# find median range
+df.median <- data.frame(
+  group = character(),
+  value = numeric(),
+  value_sum = numeric(),
+  median_position = character(),
+  cumulative = numeric(),
+  group_count = numeric()
+)
+
+for (i in tag) {
+  
+  age <- tidy.age %>% filter(site_id == i)
+  
+  index <- sum(age$value) / 2
+  cumulative <- 0
+  goal <- 0
+  counter <- 1
+  
+  while (index > 0) {
+    index <- index - age$value[counter]
+    if (index > 0) {
+      cumulative <- cumulative + age$value[counter]
+      counter <- counter + 1
+    } else{
+      goal <- age$ageRange[counter]
+    }
+  }
+  
+  df.median <- rbind(
+    df.median, 
+    data.frame(
+      tag = i,
+      value = age$value[counter],
+      value_sum = sum(age$value),
+      median_position = goal,
+      cumulative, 
+      group_count = counter
+    )
+  )
+}
+
+# estimate median
+L <- df.median %>%
+  select(median_position) %>%
+  separate(median_position, into = c("lower","upper"), sep = "~") %>%
+  select("lower") %>%
+  unlist %>%
+  as.numeric()
+
+df.median$est.median <- L + ((df.median$value_sum / 2) - df.median$cumulative) / df.median$value * 5
+df.median
+```
+
+
+
+## **Q4 Ans: glimpse()**
+```{r}
+glimpse(df.median)
+```
+

@@ -116,22 +116,17 @@ comments %>%
 
 comments %>%
   
+  group_by(commentor, plink) %>% # 根據使用者、其回應文章分類
+  summarise(num_this_post = n()) %>% # 該使用者於該文章留言幾則
+  ungroup() %>%
   group_by(commentor) %>%
   
-  # 1.
-  mutate(num_post = n_distinct(plink)) %>%
+  summarise(num_post = n_distinct(plink),
+            max_c2p = max(num_this_post),
+            min_c2p = min(num_this_post),
+            mean_c2p = mean(num_this_post),
+            sd_c2p = sd(num_this_post)) %>%
 
-  # 2. ~ 5.
-  add_count(plink) %>%
-  mutate(max_c2p = max(n),
-         min_c2p = min(n),
-         mean_c2p = mean(n),
-         sd_c2p = sd(n)) %>%
-  select(-n) %>%
-  
-  # summarise
-  ungroup() %>%
-  distinct(commentor, num_post, max_c2p, min_c2p, mean_c2p, sd_c2p) %>%
   arrange(desc(num_post)) %>%
   
   slice(1:30)
